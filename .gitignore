@@ -429,6 +429,8 @@ FodyWeavers.xsd
 *.la
 *.a
 *.lib
+!OptiScaler/library/**
+!external/freetype/freetype.lib
 
 # Executables
 *.exe
