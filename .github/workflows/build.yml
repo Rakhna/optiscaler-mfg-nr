@@ -46,7 +46,11 @@ jobs:
           if ($url -and $path) {
             Write-Host "Cloning $name from $url into $path..."
             if (Test-Path $path) { Remove-Item -Recurse -Force $path }
-            git clone --depth 1 $url $path
+            if ($path -eq "external/FidelityFX-SDK") {
+              git clone --depth 1 --branch v1.1.2 $url $path
+            } else {
+              git clone --depth 1 $url $path
+            }
           }
         }
         
