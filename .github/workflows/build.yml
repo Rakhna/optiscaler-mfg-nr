@@ -15,7 +15,7 @@ on:
     
 env:
   # Path to the solution file relative to the root of the project.
-  SOLUTION_FILE_PATH: .
+  SOLUTION_FILE_PATH: OptiScaler.sln
 
   # Configuration type to build.
   # You can convert this to a build matrix if you need coverage of multiple configuration types.
@@ -136,12 +136,22 @@ jobs:
     - name: Add MSBuild to PATH
       uses: microsoft/setup-msbuild@v2
 
-    - name: Build
-      working-directory: ${{env.GITHUB_WORKSPACE}}
-      # Add additional options to the MSBuild command line here (like platform or verbosity level).
-      # See https://docs.microsoft.com/visualstudio/msbuild/msbuild-command-line-reference
-      run: msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} ${{env.SOLUTION_FILE_PATH}} /verbosity:minimal
-      
+    - name: Build Forwarder
+      working-directory: ${{ github.workspace }}
+      run: msbuild OptiScaler\dlssnr\forwarder\dlssnr_forwarder.vcxproj /m /p:Configuration=Release /p:Platform=x64 /verbosity:minimal
+
+    - name: Build OptiScaler
+      working-directory: ${{ github.workspace }}
+      run: msbuild OptiScaler.sln /m /p:Configuration=Release /p:Platform=x64 /verbosity:minimal
+
+    - name: Copy Forwarder to Release
+      working-directory: ${{ github.workspace }}
+      shell: powershell
+      run: |
+        if (Test-Path "OptiScaler\dlssnr\forwarder\x64\Release\a\nvngx.dll_dlssnr.dll") {
+          Copy-Item -Force "OptiScaler\dlssnr\forwarder\x64\Release\a\nvngx.dll_dlssnr.dll" "x64\Release\a\"
+        }
+
     - name: Compress the artifact 
       run: |
         $zipName = "${{ steps.get_version.outputs.filename }}.7z"
