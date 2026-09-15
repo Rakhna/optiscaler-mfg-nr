@@ -32,8 +32,23 @@ jobs:
     steps:
     - uses: actions/checkout@v4
       with:
-        fetch-depth: 0            
-        submodules: 'true'
+        fetch-depth: 0
+
+    - name: Fetch Submodules and External Dependencies
+      working-directory: ${{ github.workspace }}
+      shell: powershell
+      run: |
+        git config --file .gitmodules --get-regexp path | ForEach-Object {
+          $parts = $_ -split ' '
+          $path = $parts[1]
+          $name = $parts[0] -replace '^submodule\.' -replace '\.path$'
+          $url = git config --file .gitmodules --get "submodule.$name.url"
+          if ($url -and $path) {
+            Write-Host "Cloning $name from $url into $path..."
+            if (Test-Path $path) { Remove-Item -Recurse -Force $path }
+            git clone --depth 1 $url $path
+          }
+        }
         
     - name: Check Existing Release
       id: check_release
