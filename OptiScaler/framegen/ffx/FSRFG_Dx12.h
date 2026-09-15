@@ -7,6 +7,7 @@
 #include <shaders/hudless_compare_compute/HCC_Dx12.h>
 
 #include <ffx_framegeneration.h>
+#include <dx12/ffx_api_framegeneration_dx12.h>
 
 class FSRFG_Dx12 : public virtual IFGFeature_Dx12
 {
