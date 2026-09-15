@@ -1,4 +1,4 @@
-﻿#include "pch.h"
+#include "pch.h"
 #include "menu_common.h"
 #include <framegen/dlssg/MfgUnlock.h>
 #include <framegen/dlssg/AmpereMfgLoader.h>
@@ -3118,6 +3118,26 @@ void MenuCommon::RenderFrameGenerationSelection(RenderMenuContext& ctx)
                            status.SnippetVersion.empty() ? "not patched" : status.SnippetVersion.c_str(),
                            status.AdvertiseMatched ? "matched" : "not matched",
                            status.ValidateMatched ? "matched" : "not matched", status.KernelsRewritten);
+
+        ImGui::TextColored(status.StreamlineCeilingPatched ? ImVec4(0.2f, 1.0f, 0.2f, 1.0f) : ImVec4(1.0f, 0.8f, 0.2f, 1.0f),
+                           "Streamline Plugin: %s",
+                           status.StreamlineCeilingPatched ? "Ceiling Unlocked (5 gen frames)" : "Waiting for sl.dlss_g.dll");
+
+        const char* multiplierOptions[] = { "0: Follow Game (Auto)", "2: Force 2x (1 gen)", "3: Force 3x (2 gen)", "4: Force 4x (3 gen)", "5: Force 5x (4 gen)", "6: Force 6x (5 gen)" };
+        int currentMultiplier = config->FGDLSSGAdaMfgMultiplier.value_or(0);
+        int selectionIndex = 0;
+        if (currentMultiplier >= 2 && currentMultiplier <= 6)
+            selectionIndex = currentMultiplier - 1;
+
+        if (ImGui::Combo("Ada MFG Multiplier", &selectionIndex, multiplierOptions, IM_ARRAYSIZE(multiplierOptions)))
+        {
+            if (selectionIndex == 0)
+                config->FGDLSSGAdaMfgMultiplier = 0;
+            else
+                config->FGDLSSGAdaMfgMultiplier = selectionIndex + 1;
+        }
+        ShowHelpMarker("0 = Follow Game (allows in-game menu like Cyberpunk 2077 to select 2x/3x/4x).\n"
+                       "2x to 6x forces that exact multiplier regardless of game settings.");
     }
 
     // ── Ampere/Turing (SM86/SM75) MFG Unlock ─────────────────────────
@@ -3146,6 +3166,10 @@ void MenuCommon::RenderFrameGenerationSelection(RenderMenuContext& ctx)
                 {
                     config->ExternalFrameGeneration = true;
                     config->FGDLSSGAdaMfgUnlock = false;
+                }
+                else
+                {
+                    config->ExternalFrameGeneration = false;
                 }
             }
             ShowHelpMarker("sdli1995 Ampere/Turing unlock. Sideloads the dlssg_for_sm86 proxy.\n"

@@ -119,13 +119,15 @@ HMODULE LibraryLoadHooks::LoadLibraryCheckW(std::wstring libName, LPCWSTR lpLibF
     }
 
     // Optional Ada unlock before NGX caches capabilities. External FG already returned above.
-    if (std::filesystem::path(normalizedPath).filename() == L"nvngx_dlssg.dll" && MfgUnlock::Pending())
+    const auto libFilename = std::filesystem::path(normalizedPath).filename().wstring();
+    if (libFilename == L"nvngx_dlssg.dll" && MfgUnlock::Pending())
     {
         auto snippet = NtdllProxy::LoadLibraryExW_Ldr(lpLibFullPath, NULL, 0);
         if (snippet)
             MfgUnlock::TryApply(snippet);
         return snippet;
     }
+
 
     // NGX OTA
     // Try to catch something like this:
@@ -206,6 +208,8 @@ HMODULE LibraryLoadHooks::LoadLibraryCheckW(std::wstring libName, LPCWSTR lpLibF
 
         if (dlssgModule != nullptr)
         {
+            MfgUnlock::TryPatchStreamline(dlssgModule);
+
             const bool localDlssg = pathInsideLocalSlPath && State::Instance().activeFgOutput == FGOutput::DLSSG;
 
             if (!localDlssg && dlssgModule != State::Instance().optiSlDLSSG)

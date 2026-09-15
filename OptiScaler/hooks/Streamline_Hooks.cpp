@@ -1183,8 +1183,23 @@ sl::Result StreamlineHooks::hkslDLSSGSetOptions(const sl::ViewportHandle& viewpo
             }
         }
 
-        // Won't take effect with Dynamic
-        if (Config::Instance()->FGDLSSGOverrideInterpolationCount.has_value())
+        // Check if Ada MFG Multiplier is forced (e.g. 2x, 3x, 4x, 5x, 6x)
+        const unsigned int forcedMultiplier = Config::Instance()->FGDLSSGAdaMfgMultiplier.value_or(0);
+        if (forcedMultiplier >= 2 && Config::Instance()->FGDLSSGAdaMfgUnlock.value_or_default() &&
+            !State::Instance().externalFrameGeneration)
+        {
+            const uint32_t desiredGenerated = forcedMultiplier - 1;
+            newOptions.numFramesToGenerate = desiredGenerated;
+
+            static unsigned int lastLoggedMultiplier = 0;
+            if (lastLoggedMultiplier != forcedMultiplier)
+            {
+                lastLoggedMultiplier = forcedMultiplier;
+                LOG_INFO("hkslDLSSGSetOptions: overriding numFramesToGenerate to {} ({}x multiplier)",
+                         desiredGenerated, forcedMultiplier);
+            }
+        }
+        else if (Config::Instance()->FGDLSSGOverrideInterpolationCount.has_value())
         {
             auto overrideCount = Config::Instance()->FGDLSSGOverrideInterpolationCount.value();
             if (overrideCount != 0)
@@ -1206,6 +1221,15 @@ sl::Result StreamlineHooks::hkslDLSSGSetOptions(const sl::ViewportHandle& viewpo
                      "needs 2.7.1",
                      state.streamlineVersion.major, state.streamlineVersion.minor, state.streamlineVersion.patch);
         }
+    }
+
+    if (newOptions.mode != sl::DLSSGMode::eOff)
+    {
+        ReflexHooks::setDlssgFrameCount(static_cast<uint8_t>(newOptions.numFramesToGenerate));
+    }
+    else
+    {
+        ReflexHooks::setDlssgFrameCount(0);
     }
 
     state.dlssgLastSetMode = newOptions.mode;
@@ -1244,8 +1268,14 @@ sl::Result StreamlineHooks::hkslDLSSGGetState(const sl::ViewportHandle& viewport
             // nvngx_dlssg.dll answers the real ceiling, but a Streamline wrapper between here and the
             // snippet can carry a lower one of its own. Publish the unlocked count. Struct version 1
             // ends ahead of this field, so the raise stays inside this branch.
-            if (auto unlockedMax = MfgUnlock::UnlockedMax(); unlockedMax > state.numFramesToGenerateMax)
-                state.numFramesToGenerateMax = unlockedMax;
+            if (Config::Instance()->FGDLSSGAdaMfgUnlock.value_or_default() && !State::Instance().externalFrameGeneration)
+            {
+                const unsigned int ceiling = Config::Instance()->FGDLSSGAdaMfgCeiling.value_or(5);
+                if (auto unlockedMax = MfgUnlock::UnlockedMax(); unlockedMax > 0)
+                    state.numFramesToGenerateMax = std::min(ceiling, unlockedMax);
+                else if (state.numFramesToGenerateMax < ceiling)
+                    state.numFramesToGenerateMax = ceiling;
+            }
         }
 
         if (originalStructVersion >= 3)
@@ -1265,8 +1295,14 @@ sl::Result StreamlineHooks::hkslDLSSGGetState(const sl::ViewportHandle& viewport
         State::Instance().dlssgGameDMFGSupported = state.bIsDynamicMFGSupported == sl::eTrue;
 
         // The wrapper's ceiling, replaced by the unlocked count.
-        if (auto unlockedMax = MfgUnlock::UnlockedMax(); unlockedMax > state.numFramesToGenerateMax)
-            state.numFramesToGenerateMax = unlockedMax;
+        if (Config::Instance()->FGDLSSGAdaMfgUnlock.value_or_default() && !State::Instance().externalFrameGeneration)
+        {
+            const unsigned int ceiling = Config::Instance()->FGDLSSGAdaMfgCeiling.value_or(5);
+            if (auto unlockedMax = MfgUnlock::UnlockedMax(); unlockedMax > 0)
+                state.numFramesToGenerateMax = std::min(ceiling, unlockedMax);
+            else if (state.numFramesToGenerateMax < ceiling)
+                state.numFramesToGenerateMax = ceiling;
+        }
     }
 
     if (!State::Instance().dlssgGameDMFGSupported)
@@ -1288,8 +1324,14 @@ sl::Result StreamlineHooks::hkslDLSSGGetState(const sl::ViewportHandle& viewport
             if (o_slDLSSGGetState(viewport, localState, &localOptions) == sl::Result::eOk)
             {
                 // A wrapper ahead of the snippet can answer a lower ceiling than the patched one.
-                if (auto unlockedMax = MfgUnlock::UnlockedMax(); unlockedMax > localState.numFramesToGenerateMax)
-                    localState.numFramesToGenerateMax = unlockedMax;
+                if (Config::Instance()->FGDLSSGAdaMfgUnlock.value_or_default() && !State::Instance().externalFrameGeneration)
+                {
+                    const unsigned int ceiling = Config::Instance()->FGDLSSGAdaMfgCeiling.value_or(5);
+                    if (auto unlockedMax = MfgUnlock::UnlockedMax(); unlockedMax > 0)
+                        localState.numFramesToGenerateMax = std::min(ceiling, unlockedMax);
+                    else if (localState.numFramesToGenerateMax < ceiling)
+                        localState.numFramesToGenerateMax = ceiling;
+                }
 
                 if (localState.numFramesToGenerateMax > 0 && localState.numFramesToGenerateMax < 6)
                 {

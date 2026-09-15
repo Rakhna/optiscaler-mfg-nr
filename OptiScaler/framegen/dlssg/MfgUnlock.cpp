@@ -9,6 +9,7 @@
 #include <scanner/scanner.h>
 #include <misc/IdentifyGpu.h>
 
+#include <mutex>
 
 namespace
 {
@@ -37,43 +38,7 @@ constexpr std::string_view kAdvertisePattern309 = "81 FD B0 01 00 00 0F 8C ? ? ?
 //     setae al
 constexpr std::string_view kValidatePattern309 = "3D B0 01 00 00 0F 93 C0";
 
-
-
-// scanner::GetAddress only walks sections marked executable. Fatbins are data, so they need their own
-// search. Returns 0 unless exactly one non-executable section holds the sequence, once.
-uintptr_t FindDataBytes(HMODULE module, const uint8_t* needle, size_t length)
-{
-    auto base = reinterpret_cast<uint8_t*>(module);
-    auto dos = reinterpret_cast<IMAGE_DOS_HEADER*>(base);
-    auto nt = reinterpret_cast<IMAGE_NT_HEADERS64*>(base + dos->e_lfanew);
-    auto section = IMAGE_FIRST_SECTION(nt);
-
-    uintptr_t found = 0;
-    size_t hits = 0;
-
-    for (unsigned i = 0; i < nt->FileHeader.NumberOfSections; ++i)
-    {
-        const auto& s = section[i];
-
-        if (s.Characteristics & IMAGE_SCN_MEM_EXECUTE)
-            continue;
-
-        uint8_t* start = base + s.VirtualAddress;
-        uint8_t* end = start + s.Misc.VirtualSize;
-
-        for (uint8_t* p = std::search(start, end, needle, needle + length); p != end;
-             p = std::search(p + 1, end, needle, needle + length))
-        {
-            found = reinterpret_cast<uintptr_t>(p);
-
-            if (++hits > 1)
-                return 0;
-        }
-    }
-
-    return hits == 1 ? found : 0;
-}
-
+std::mutex g_statusMutex;
 MfgUnlock::Status g_status {};
 
 uintptr_t UniqueAddress(HMODULE module, std::string_view pattern)
@@ -104,17 +69,17 @@ bool WriteBytes(uintptr_t address, const uint8_t* bytes, size_t count)
 {
     DWORD oldProtect = 0;
 
-    if (!VirtualProtect((LPVOID) address, count, PAGE_EXECUTE_READWRITE, &oldProtect))
+    if (!VirtualProtect(reinterpret_cast<LPVOID>(address), count, PAGE_EXECUTE_READWRITE, &oldProtect))
     {
         LOG_WARN("VirtualProtect failed at {:X}", address);
         return false;
     }
 
-    std::memcpy((void*) address, bytes, count);
+    std::memcpy(reinterpret_cast<void*>(address), bytes, count);
 
     DWORD ignored = 0;
-    VirtualProtect((LPVOID) address, count, oldProtect, &ignored);
-    FlushInstructionCache(GetCurrentProcess(), (LPCVOID) address, count);
+    VirtualProtect(reinterpret_cast<LPVOID>(address), count, oldProtect, &ignored);
+    FlushInstructionCache(GetCurrentProcess(), reinterpret_cast<LPCVOID>(address), count);
 
     return true;
 }
@@ -232,9 +197,15 @@ constexpr size_t kImageArch = 28;
 
 unsigned int RewriteBlackwellKernels(HMODULE module)
 {
+    if (!module)
+        return 0;
     auto base = reinterpret_cast<uint8_t*>(module);
     auto dos = reinterpret_cast<IMAGE_DOS_HEADER*>(base);
+    if (dos->e_magic != IMAGE_DOS_SIGNATURE)
+        return 0;
     auto nt = reinterpret_cast<IMAGE_NT_HEADERS64*>(base + dos->e_lfanew);
+    if (nt->Signature != IMAGE_NT_SIGNATURE)
+        return 0;
     auto section = IMAGE_FIRST_SECTION(nt);
 
     const uint8_t magic[] = { 0x50, 0xED, 0x55, 0xBA };
@@ -335,29 +306,198 @@ unsigned int RewriteBlackwellKernels(HMODULE module)
 
     return rewritten;
 }
+
+// ------------------------------------------------------- Streamline plugin ceiling patch
+HMODULE g_ceilingModule = nullptr;
+unsigned char* g_ceilingSite = nullptr;
+unsigned char g_ceilingOriginal = 0;
+unsigned char g_ceilingCmovOriginal = 0;
+bool g_ceilingPatched = false;
+
+// Scan executable sections for the Streamline plugin clamp:
+//     mov edx, <compiled ceiling>   ; BA ?? 00 00 00
+//     cmp ecx, edx                  ; 3B CA
+//     cmovb edx, ecx                ; 0F 42 D1  <- lowers ceiling to NGX's reported 1 frame
+//
+// Rewriting the final byte 0xD1 -> 0xD2 turns this into cmovb edx, edx: identical 3-byte size,
+// no lowering of the compiled ceiling.
+bool PatchStreamlinePlugin(HMODULE mod)
+{
+    if (mod == nullptr)
+        return false;
+
+    if (g_ceilingPatched)
+        return true;
+
+    auto base = reinterpret_cast<uint8_t*>(mod);
+    auto dos = reinterpret_cast<IMAGE_DOS_HEADER*>(base);
+    if (dos->e_magic != IMAGE_DOS_SIGNATURE)
+        return false;
+
+    auto nt = reinterpret_cast<IMAGE_NT_HEADERS64*>(base + dos->e_lfanew);
+    if (nt->Signature != IMAGE_NT_SIGNATURE)
+        return false;
+
+    const unsigned char tail[] = { 0x3B, 0xCA, 0x0F, 0x42, 0xD1 };
+    unsigned char* found = nullptr;
+    size_t hits = 0;
+    auto section = IMAGE_FIRST_SECTION(nt);
+
+    for (WORD i = 0; i < nt->FileHeader.NumberOfSections; ++i)
+    {
+        const auto& s = section[i];
+        if (!(s.Characteristics & IMAGE_SCN_MEM_EXECUTE))
+            continue;
+
+        uint8_t* start = base + s.VirtualAddress;
+        const size_t size = s.Misc.VirtualSize;
+        if (size < 10)
+            continue;
+
+        for (size_t off = 0; off + 10 <= size; ++off)
+        {
+            if (start[off] != 0xBA)
+                continue;
+            if (start[off + 2] != 0 || start[off + 3] != 0 || start[off + 4] != 0)
+                continue;
+            if (std::memcmp(start + off + 5, tail, sizeof(tail)) != 0)
+                continue;
+
+            const unsigned char ceiling = start[off + 1];
+            if (ceiling == 0 || ceiling > 8)
+                continue;
+
+            if (found == nullptr)
+                found = start + off;
+            ++hits;
+        }
+    }
+
+    if (hits != 1 || found == nullptr)
+    {
+        LOG_WARN("MFG unlock: found {} frame-count clamps in Streamline plugin (expected 1); left alone", hits);
+        return false;
+    }
+
+    DWORD oldProtect = 0;
+    if (!VirtualProtect(found, 10, PAGE_EXECUTE_READWRITE, &oldProtect))
+    {
+        LOG_WARN("MFG unlock: VirtualProtect failed for Streamline clamp at {:X}", (uintptr_t) found);
+        return false;
+    }
+
+    g_ceilingModule = mod;
+    g_ceilingSite = found;
+    g_ceilingOriginal = found[1];
+    g_ceilingCmovOriginal = found[9];
+
+    // cmovb edx, ecx (0x0F 0x42 0xD1) -> cmovb edx, edx (0x0F 0x42 0xD2)
+    found[9] = 0xD2;
+
+    DWORD ignored = 0;
+    VirtualProtect(found, 10, oldProtect, &ignored);
+    FlushInstructionCache(GetCurrentProcess(), found, 10);
+
+    {
+        std::lock_guard<std::mutex> lock(g_statusMutex);
+        g_ceilingPatched = true;
+        g_status.StreamlineFound = true;
+        g_status.StreamlineCeilingPatched = true;
+        g_status.StreamlineCompiledCeiling = g_ceilingOriginal;
+        g_status.StreamlineEffectiveCeiling = g_ceilingOriginal;
+    }
+
+    LOG_INFO("MFG unlock: stopped the DLSS-G plugin from lowering its compiled ceiling of {} generated frame(s) to the stale NGX device value (effective maximum {}x)",
+             g_ceilingOriginal, g_ceilingOriginal + 1);
+
+    return true;
+}
 } // namespace
+
+bool MfgUnlock::TryPatchStreamline(HMODULE requestedModule)
+{
+    if (g_ceilingPatched)
+        return true;
+
+    static bool s_patchAttempted = false;
+    if (s_patchAttempted && requestedModule == nullptr)
+        return false;
+
+    if (!Config::Instance()->FGDLSSGAdaMfgUnlock.value_or_default() ||
+        Config::Instance()->FGDLSSGAmpereMfgUnlock.value_or_default() ||
+        State::Instance().externalFrameGeneration)
+        return false;
+
+    const auto& gpu = IdentifyGpu::getPrimaryGpu();
+    if (gpu.vendorId != VendorId::Nvidia || gpu.nvidiaArchInfo.architecture_id != NV_GPU_ARCHITECTURE_AD100)
+        return false;
+
+    HMODULE mod = requestedModule ? requestedModule : GetModuleHandleW(L"sl.dlss_g.dll");
+    if (mod != nullptr)
+    {
+        s_patchAttempted = true;
+        return PatchStreamlinePlugin(mod);
+    }
+
+    return false;
+}
+
+void MfgUnlock::RestoreStreamline()
+{
+    if (!g_ceilingPatched || g_ceilingSite == nullptr)
+        return;
+
+    DWORD oldProtect = 0;
+    if (VirtualProtect(g_ceilingSite, 10, PAGE_EXECUTE_READWRITE, &oldProtect))
+    {
+        g_ceilingSite[9] = g_ceilingCmovOriginal;
+        DWORD ignored = 0;
+        VirtualProtect(g_ceilingSite, 10, oldProtect, &ignored);
+        FlushInstructionCache(GetCurrentProcess(), g_ceilingSite, 10);
+    }
+
+    g_ceilingModule = nullptr;
+    g_ceilingSite = nullptr;
+
+    {
+        std::lock_guard<std::mutex> lock(g_statusMutex);
+        g_ceilingPatched = false;
+        g_status.StreamlineCeilingPatched = false;
+    }
+}
 
 void MfgUnlock::TryApply(HMODULE requestedModule)
 {
+    // Latches once nvngx_dlssg.dll is present; before that every call rescans for it.
+    static bool snippetDone = false;
+
+    if (snippetDone && requestedModule == nullptr)
+    {
+        TryPatchStreamline();
+        return;
+    }
+
     if (!Config::Instance()->FGDLSSGAdaMfgUnlock.value_or_default() ||
         Config::Instance()->FGDLSSGAmpereMfgUnlock.value_or_default() ||
         State::Instance().externalFrameGeneration)
         return;
+
     const auto& gpu = IdentifyGpu::getPrimaryGpu();
     // The kernel retarget is Ada-specific. Do not patch Ampere/Turing or change Blackwell's working path.
     if (gpu.vendorId != VendorId::Nvidia || gpu.nvidiaArchInfo.architecture_id != NV_GPU_ARCHITECTURE_AD100)
         return;
-
-    // Latches once nvngx_dlssg.dll is present; before that every call rescans for it.
-    static bool snippetDone = false;
 
     if (!snippetDone)
     {
         if (auto module = requestedModule ? requestedModule : GetModuleHandleW(L"nvngx_dlssg.dll"); module != nullptr)
         {
             snippetDone = true;
-            g_status.ModuleFound = true;
-            g_status.SnippetVersion = ModuleVersion(module);
+            auto version = ModuleVersion(module);
+            {
+                std::lock_guard<std::mutex> lock(g_statusMutex);
+                g_status.ModuleFound = true;
+                g_status.SnippetVersion = version;
+            }
 
             // Validate both gates before touching either. Ambiguous/unknown versions remain unmodified.
             const bool knownGates =
@@ -366,7 +506,7 @@ void MfgUnlock::TryApply(HMODULE requestedModule)
             if (!knownGates)
             {
                 LOG_WARN("MFG unlock: unsupported or ambiguous DLSSG {} signatures; left unchanged",
-                         g_status.SnippetVersion);
+                         version);
                 return;
             }
 
@@ -377,18 +517,24 @@ void MfgUnlock::TryApply(HMODULE requestedModule)
                                       gpu.nvidiaArchInfo.architecture_id >= NV_GPU_ARCHITECTURE_TU100 &&
                                       gpu.nvidiaArchInfo.architecture_id <= NV_GPU_ARCHITECTURE_AD100;
 
+            unsigned int kernelsRewritten = 0;
             if (Config::Instance()->FGDLSSGAdaBlackwellKernels.value_or(preBlackwell))
-                g_status.KernelsRewritten = RewriteBlackwellKernels(module);
+                kernelsRewritten = RewriteBlackwellKernels(module);
 
-            if (g_status.KernelsRewritten == 0)
+            if (kernelsRewritten == 0)
             {
                 LOG_WARN("MFG unlock: no compatible interpolation kernels; frame-count gates left unchanged");
                 return;
             }
             const bool advertise = PatchAdvertise(module);
             const bool validate = PatchValidate(module);
-            g_status.AdvertiseMatched = advertise;
-            g_status.ValidateMatched = validate;
+
+            {
+                std::lock_guard<std::mutex> lock(g_statusMutex);
+                g_status.KernelsRewritten = kernelsRewritten;
+                g_status.AdvertiseMatched = advertise;
+                g_status.ValidateMatched = validate;
+            }
 
             if (advertise && validate)
                 LOG_INFO("MFG unlock: nvngx_dlssg.dll patched for {} generated frames", kMaxGeneratedFrames);
@@ -396,11 +542,14 @@ void MfgUnlock::TryApply(HMODULE requestedModule)
                 LOG_WARN("MFG unlock: nvngx_dlssg.dll incomplete, advertise {}, validate {}", advertise, validate);
         }
     }
+
+    // Also attempt Streamline plugin patch if already loaded
+    TryPatchStreamline();
 }
 
 unsigned int MfgUnlock::UnlockedMax()
 {
-    const auto& status = LastStatus();
+    const auto status = LastStatus();
 
     return status.AdvertiseMatched && status.ValidateMatched && status.KernelsRewritten > 0
                ? kMaxGeneratedFrames : 0;
@@ -410,10 +559,21 @@ bool MfgUnlock::Pending()
 {
     if (!Config::Instance()->FGDLSSGAdaMfgUnlock.value_or_default() ||
         Config::Instance()->FGDLSSGAmpereMfgUnlock.value_or_default() ||
-        State::Instance().externalFrameGeneration || g_status.ModuleFound)
+        State::Instance().externalFrameGeneration)
         return false;
+
+    {
+        std::lock_guard<std::mutex> lock(g_statusMutex);
+        if (g_status.ModuleFound)
+            return false;
+    }
+
     const auto& gpu = IdentifyGpu::getPrimaryGpu();
     return gpu.vendorId == VendorId::Nvidia && gpu.nvidiaArchInfo.architecture_id == NV_GPU_ARCHITECTURE_AD100;
 }
 
-const MfgUnlock::Status& MfgUnlock::LastStatus() { return g_status; }
+MfgUnlock::Status MfgUnlock::LastStatus()
+{
+    std::lock_guard<std::mutex> lock(g_statusMutex);
+    return g_status;
+}

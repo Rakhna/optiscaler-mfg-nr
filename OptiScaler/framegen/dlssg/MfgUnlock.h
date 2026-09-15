@@ -46,14 +46,23 @@ struct Status
     bool AdvertiseMatched = false;
     bool ValidateMatched = false;
     unsigned int KernelsRewritten = 0;
+    bool StreamlineFound = false;
+    bool StreamlineCeilingPatched = false;
+    unsigned int StreamlineCompiledCeiling = 0;
+    unsigned int StreamlineEffectiveCeiling = 0;
     std::string SnippetVersion; // file version of nvngx_dlssg.dll, empty if it could not be read
 };
 
-const Status& LastStatus();
+Status LastStatus();
 
 // Applies the patches once per process. Silent and harmless when the config option is off, when
 // nvngx_dlssg.dll is not loaded, or when a signature does not match exactly once.
 void TryApply(HMODULE module = nullptr);
+
+// Patches sl.dlss_g.dll in memory to stop it lowering its compiled frame ceiling to NGX's initial 1-frame capability.
+bool TryPatchStreamline(HMODULE module = nullptr);
+void RestoreStreamline();
+
 bool Pending();
 
 // The generated frame ceiling the patches opened, or 0 when they did not land.
