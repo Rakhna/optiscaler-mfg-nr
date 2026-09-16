@@ -55,6 +55,31 @@ A unified OptiScaler build combining:
 
 ---
 
+## Keybindings & Menu Shortcut Configuration
+
+By default, the OptiScaler in-game overlay menu is bound to the **Insert** key (`0x2D`). If your keyboard lacks an `Insert` key (common on 60%/75% compact or laptop keyboards), you can change it in `OptiScaler.ini` under the `[Menu]` section using hexadecimal Windows Virtual-Key codes:
+
+```ini
+[Menu]
+; Shortcut key for opening the overlay menu:
+; 0x2D = Insert (default)
+; 0x7A = F11
+; 0x7B = F12
+; 0x24 = Home
+; 0x08 = Backspace
+; -1   = Disabled
+ShortcutKey = 0x7A
+
+; Optional shortcut toggles:
+FpsShortcutKey      = 0x21 ; Page Up (toggles FPS overlay)
+FpsCycleShortcutKey = 0x22 ; Page Down (cycles FPS overlay layout)
+FGShortcutKey       = 0x23 ; End (toggles Frame Generation on/off)
+```
+
+Shortcuts can also be rebound interactively inside the running game from the **Keybinds** tab in the overlay menu.
+
+---
+
 ## Important Notes
 
 - Neural Rendering and high Multi-Frame Generation multipliers increase GPU memory and processing overhead.
