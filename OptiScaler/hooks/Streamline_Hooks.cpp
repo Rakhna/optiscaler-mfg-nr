@@ -408,6 +408,7 @@ sl::Result StreamlineHooks::hkslSetTag(const sl::ViewportHandle& viewport, const
 
         // Cyberpunk hudless state fix for RDNA 2
         if (State::Instance().gameQuirks & GameQuirk::CyberpunkHudlessState &&
+            IdentifyGpu::getPrimaryGpu().vendorId != VendorId::Nvidia &&
             tags[i].resource->state ==
                 (D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE) &&
             tags[i].type == sl::kBufferTypeHUDLessColor)
