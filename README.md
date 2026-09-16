@@ -1,46 +1,73 @@
-# OptiScaler Neural Rendering
+# OptiScaler (DLSS Neural Rendering + Multi-Frame Generation)
 
-A game mod that uses NVIDIA AI to change lighting, detail and colour. You can adjust the look and how much performance the effect costs.
+A unified OptiScaler build combining:
+1. **NVIDIA DLSS 5 Neural Rendering (DLSS-NR)**: Pre-SR multipass AI detail, lighting, and colour reconstruction.
+2. **Multi-Frame Generation (MFG)**: Built-in 100% in-memory unlock for Ada Lovelace (RTX 40 series) supporting up to 6x (2x/3x/4x/6x) with Reflex sync, plus Ampere/Turing (RTX 20/30) SM86/SM75 loader support.
 
-This is an experimental community version of OptiScaler. Results and game support vary.
+**[Download the latest release](https://github.com/Rakhna/optiscaler-mfg-nr/releases/tag/nightly)** · [Setup guide](INSTALL-DLSSNR.md) · [Issues](https://github.com/Rakhna/optiscaler-mfg-nr/issues)
 
-**[Download the latest version](https://github.com/wilsjo2/OptiScaler-DLSSNR-PreSR-Multipass/releases/latest)** · [Setup guide](INSTALL-DLSSNR.md) · [What's new](https://github.com/wilsjo2/OptiScaler-DLSSNR-PreSR-Multipass/releases)
+---
 
-## What you can change
+## Key Features
 
-- Adjust the strength, lighting, detail and colour of the effect.
-- Use separate settings for skin and scenery.
-- Run the effect before or after the game's upscaling.
-- Apply NR to the finished picture to help with green noise. Works with frame generation on or off in native DirectX 12 games, including HDR.
-- Apply it more than once, with different settings each time. Extra passes cost more performance.
-- Lower the model resolution to reduce the performance cost.
+### Neural Rendering (DLSS-NR)
+- Adjust the strength, lighting, detail, and colour of the neural reconstruction pass.
+- Use separate adjustments for skin protection and general scenery.
+- Run the effect before spatial reconstruction (Pre-SR Multipass) or after upscaling.
+- Clean up specular shimmer, fine geometric noise, and ray reconstruction temporal artifacts before frame generation.
+- Configurable precision modes (FP8 native / FP8+NVFP4 hybrid).
 
-## What you need
+### Multi-Frame Generation (MFG Unlock)
+- **RTX 40 Series (Ada Lovelace)**: In-memory dynamic patch of `sl.dlss_g.dll` enabling 2x, 3x, 4x, and up to 6x frame generation without touching signed binaries on disk. Fully synchronized with NVIDIA Reflex to preserve frame pacing.
+- **RTX 20 / 30 Series (Turing / Ampere)**: Integrated loader support for SM86 / SM75 modules (`dlssg_sm86`).
 
-An NVIDIA RTX 20, 30, 40 or 50-series GPU and a supported 64-bit game. Older cards can be much slower.
+---
 
-Download the NVIDIA model file, `nvngx_dlssnr.dll`, separately. The file you need depends on your GPU. The [setup guide](INSTALL-DLSSNR.md#choose-the-correct-runtime) explains which one to use and how to check it.
+## Requirements
 
-## Install on Windows
+- **GPU**: NVIDIA RTX 20, 30, 40, or 50 series GPU.
+  - Ada MFG Unlock: RTX 40 series.
+  - Ampere/Turing MFG: RTX 20 / 30 series.
+  - DLSS-NR: RTX 20, 30, 40, or 50 series.
+- **OS**: Windows 10/11 64-bit or Linux via Proton/Wine.
+- **Game**: DirectX 12 or Vulkan title supporting DLSS / Streamline (e.g., Cyberpunk 2077).
+- **DLSS-NR Runtime**: `nvngx_dlssnr.dll` placed in the game executable directory (original NVIDIA version for RTX 50, or cross-generation compatibility runtime for RTX 20/30/40; see [INSTALL-DLSSNR.md](INSTALL-DLSSNR.md)).
+
+---
+
+## Installation on Windows
 
 1. Close the game and back up any existing mod files.
-2. Download the release ZIP and extract **all files** beside the game's executable.
-3. Add the model file described above to the same folder.
-4. Run `setup_windows.bat` and choose **NVIDIA** when asked.
-5. Start the game, select DLSS, then press **Insert** to open OptiScaler. Enable Neural Rendering and start with one pass.
+2. Download `OptiScaler_v0.7.7-pre0_20260915.7z` from [Releases](https://github.com/Rakhna/optiscaler-mfg-nr/releases/tag/nightly).
+3. Extract all files directly into the directory containing the game executable (e.g. `Cyberpunk 2077\bin\x64\`):
+   - `OptiScaler.dll` (rename to `dxgi.dll` or run `setup_windows.bat`)
+   - `nvngx.dll_dlssnr.dll`
+   - `OptiScaler.ini`
+   - `OptiScaler/` folder (FidelityFX and XeSS companion libraries)
+4. Place the required `nvngx_dlssnr.dll` runtime alongside the executable.
+5. Configure `OptiScaler.ini`:
+   - For RTX 40 MFG: set `AdaMfgUnlock=true` under `[DLSSG]`.
+   - For DLSS-NR: configure options under `[DlssNr]`.
+6. Start the game, enable DLSS and Frame Generation in settings, and press **Insert** to toggle the in-game OptiScaler HUD.
 
-See the [setup guide](INSTALL-DLSSNR.md) for game-specific steps and troubleshooting.
+> [!NOTE]
+> **Upcoming Feature**: We will soon add a streamlined installer and uninstaller tool to make deploying, updating, and removing OptiScaler even easier across games.
 
-## Keep in mind
+---
 
-- Neural Rendering costs performance and can cause flicker or other visual problems. Using it before Ray Reconstruction is still experimental.
-- The optional **hybrid mode** is for RTX 50 GPUs. Its files are included. Loading may pause the game and look like a freeze; please wait.
-- Avoid anti-cheat-protected multiplayer games.
+## Important Notes
 
-For frame generation, see the [setup notes](docs/DLSS-FRAME-GENERATION.md). For bugs, [open an issue](https://github.com/wilsjo2/OptiScaler-DLSSNR-PreSR-Multipass/issues) with your game, GPU, settings and `OptiScaler.log`.
+- Neural Rendering and high Multi-Frame Generation multipliers increase GPU memory and processing overhead.
+- In-memory patching does not modify signed DLLs on disk.
+- Avoid using in anti-cheat-protected online multiplayer games.
+
+---
 
 ## Credits
 
-Built on [OptiScaler](https://github.com/optiscaler/OptiScaler) and [Dagherbou's Neural Rendering fork](https://github.com/Dagherbou/OptiScaler_DLSSNR), with colour processing from [RenoDX](https://github.com/clshortfuse/renodx).
+- Based on [OptiScaler](https://github.com/optiscaler/OptiScaler) by optiscaler.
+- Neural Rendering based on [OptiScaler_DLSSNR](https://github.com/Dagherbou/OptiScaler_DLSSNR) and [OptiScaler-DLSSNR-PreSR-Multipass](https://github.com/wilsjo2/OptiScaler-DLSSNR-PreSR-Multipass) with colour processing from [RenoDX](https://github.com/clshortfuse/renodx).
+- RTX 40 Multi-Frame Generation memory patch concepts based on research by y4my4my4m.
+- Ampere/Turing SM86 MFG loader integration based on sdli1995.
 
-[Full credits](docs/CREDITS.md) · [Licence](LICENSE) · [OptiScaler documentation](https://github.com/optiscaler/OptiScaler/wiki)
+[Full credits](docs/CREDITS.md) · [Licence](LICENSE)
