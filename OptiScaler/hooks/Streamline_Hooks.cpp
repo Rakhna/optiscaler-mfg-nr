@@ -1189,8 +1189,7 @@ sl::Result StreamlineHooks::hkslDLSSGSetOptions(const sl::ViewportHandle& viewpo
 
         // Check if Ada MFG Multiplier is forced (e.g. 2x, 3x, 4x, 5x, 6x)
         const unsigned int forcedMultiplier = Config::Instance()->FGDLSSGAdaMfgMultiplier.value_or(0);
-        if (forcedMultiplier >= 2 && Config::Instance()->FGDLSSGAdaMfgUnlock.value_or_default() &&
-            !State::Instance().externalFrameGeneration)
+        if (forcedMultiplier >= 2 && !State::Instance().externalFrameGeneration)
         {
             const uint32_t desiredGenerated = forcedMultiplier - 1;
             newOptions.numFramesToGenerate = desiredGenerated;
@@ -1272,7 +1271,9 @@ sl::Result StreamlineHooks::hkslDLSSGGetState(const sl::ViewportHandle& viewport
             // nvngx_dlssg.dll answers the real ceiling, but a Streamline wrapper between here and the
             // snippet can carry a lower one of its own. Publish the unlocked count. Struct version 1
             // ends ahead of this field, so the raise stays inside this branch.
-            if (Config::Instance()->FGDLSSGAdaMfgUnlock.value_or_default() && !State::Instance().externalFrameGeneration)
+            if ((Config::Instance()->FGDLSSGAdaMfgUnlock.value_or_default() ||
+                 Config::Instance()->FGDLSSGAdaMfgMultiplier.value_or(0) >= 2) &&
+                !State::Instance().externalFrameGeneration)
             {
                 const unsigned int ceiling = Config::Instance()->FGDLSSGAdaMfgCeiling.value_or(5);
                 if (auto unlockedMax = MfgUnlock::UnlockedMax(); unlockedMax > 0)
@@ -1299,7 +1300,9 @@ sl::Result StreamlineHooks::hkslDLSSGGetState(const sl::ViewportHandle& viewport
         State::Instance().dlssgGameDMFGSupported = state.bIsDynamicMFGSupported == sl::eTrue;
 
         // The wrapper's ceiling, replaced by the unlocked count.
-        if (Config::Instance()->FGDLSSGAdaMfgUnlock.value_or_default() && !State::Instance().externalFrameGeneration)
+        if ((Config::Instance()->FGDLSSGAdaMfgUnlock.value_or_default() ||
+             Config::Instance()->FGDLSSGAdaMfgMultiplier.value_or(0) >= 2) &&
+            !State::Instance().externalFrameGeneration)
         {
             const unsigned int ceiling = Config::Instance()->FGDLSSGAdaMfgCeiling.value_or(5);
             if (auto unlockedMax = MfgUnlock::UnlockedMax(); unlockedMax > 0)
@@ -1328,7 +1331,9 @@ sl::Result StreamlineHooks::hkslDLSSGGetState(const sl::ViewportHandle& viewport
             if (o_slDLSSGGetState(viewport, localState, &localOptions) == sl::Result::eOk)
             {
                 // A wrapper ahead of the snippet can answer a lower ceiling than the patched one.
-                if (Config::Instance()->FGDLSSGAdaMfgUnlock.value_or_default() && !State::Instance().externalFrameGeneration)
+                if ((Config::Instance()->FGDLSSGAdaMfgUnlock.value_or_default() ||
+                     Config::Instance()->FGDLSSGAdaMfgMultiplier.value_or(0) >= 2) &&
+                    !State::Instance().externalFrameGeneration)
                 {
                     const unsigned int ceiling = Config::Instance()->FGDLSSGAdaMfgCeiling.value_or(5);
                     if (auto unlockedMax = MfgUnlock::UnlockedMax(); unlockedMax > 0)

@@ -38,6 +38,17 @@ constexpr std::string_view kAdvertisePattern309 = "81 FD B0 01 00 00 0F 8C ? ? ?
 //     setae al
 constexpr std::string_view kValidatePattern309 = "3D B0 01 00 00 0F 93 C0";
 
+// 310.9 evaluate feature count/index validator (Dashdogy ngx_mfg_gate).
+// Checks whether the device supports MFG (test dl, dl), and if not, jumps to an error label
+// that verifies cmp r8d, 1 (count == 1). If r8d > 1, it returns NVSDK_NGX_Result_FAIL_InvalidParameter (0xBAD00005).
+//     test dl, dl
+//     je   +displacement   ; 0F 84 XX XX 00 00 -> jumps to cmp r8d, 1 check
+//     mov  esi, 5          ; BE 05 00 00 00    -> Blackwell path (accepts up to 5 frames)
+//
+// Patched: 0F 84 -> EB 04 (jmp +4), jumping over the 4-byte displacement directly into mov esi, 5.
+constexpr std::string_view kNgxMfgGatePattern = "84 D2 0F 84 ? ? ? ? BE 05 00 00 00";
+constexpr std::string_view kNgxMfgGatePatchedPattern = "84 D2 EB 04 ? ? ? ? BE 05 00 00 00";
+
 std::mutex g_statusMutex;
 MfgUnlock::Status g_status {};
 
@@ -166,6 +177,46 @@ bool PatchValidate(HMODULE module)
              kMaxGeneratedFrames);
 
     return WriteBytes(branchAt, nop, sizeof(nop)) && WriteBytes(countAt, count, sizeof(count));
+}
+
+// Drops the count/index validator branch in EvaluateFeature so multi-frame requests (> 1 frame)
+// on Ada GPUs enter the Blackwell frame-count validation path and do not fail with 0xBAD00005.
+bool PatchNgxMfgGate(HMODULE module)
+{
+    const auto address = UniqueAddress(module, kNgxMfgGatePattern);
+    if (address == 0)
+    {
+        if (UniqueAddress(module, kNgxMfgGatePatchedPattern) != 0)
+        {
+            LOG_INFO("MFG unlock: ngx_mfg_gate already patched");
+            return true;
+        }
+
+        LOG_WARN("MFG unlock: ngx_mfg_gate pattern not found");
+        return false;
+    }
+
+    const auto branchAt = address + 2;
+    const uint8_t jmpOver[] = { 0xEB, 0x04 };
+
+    // Safety verification: verify target of original branch points to cmp r8d, 1 (41 83 F8 01)
+    const int32_t displacement = *reinterpret_cast<const int32_t*>(address + 4);
+    const auto target = address + 8 + displacement;
+    const auto targetBytes = reinterpret_cast<const uint8_t*>(target);
+    if (targetBytes[0] == 0x41 && targetBytes[1] == 0x83 && targetBytes[2] == 0xF8 && targetBytes[3] == 0x01)
+    {
+        LOG_INFO("MFG unlock: verified ngx_mfg_gate branch target points to cmp r8d, 1 at {:X}", target);
+    }
+    else
+    {
+        LOG_WARN("MFG unlock: ngx_mfg_gate target at {:X} is {:02X} {:02X} {:02X} {:02X} (expected 41 83 F8 01)",
+                 target, targetBytes[0], targetBytes[1], targetBytes[2], targetBytes[3]);
+    }
+
+    LOG_INFO("MFG unlock: ngx_mfg_gate at {:X}, je {} -> jmp {}", branchAt,
+             Hex((const uint8_t*) branchAt, sizeof(jmpOver)), Hex(jmpOver, sizeof(jmpOver)));
+
+    return WriteBytes(branchAt, jmpOver, sizeof(jmpOver));
 }
 
 
@@ -477,7 +528,9 @@ void MfgUnlock::TryApply(HMODULE requestedModule)
         return;
     }
 
-    if (!Config::Instance()->FGDLSSGAdaMfgUnlock.value_or_default() ||
+    const bool adaUnlock = Config::Instance()->FGDLSSGAdaMfgUnlock.value_or_default() ||
+                           Config::Instance()->FGDLSSGAdaMfgMultiplier.value_or(0) >= 2;
+    if (!adaUnlock ||
         Config::Instance()->FGDLSSGAmpereMfgUnlock.value_or_default() ||
         State::Instance().externalFrameGeneration)
         return;
@@ -521,25 +574,24 @@ void MfgUnlock::TryApply(HMODULE requestedModule)
             if (Config::Instance()->FGDLSSGAdaBlackwellKernels.value_or(false))
                 kernelsRewritten = RewriteBlackwellKernels(module);
 
-            if (kernelsRewritten == 0)
-            {
-                LOG_WARN("MFG unlock: no compatible interpolation kernels; frame-count gates left unchanged");
-                return;
-            }
             const bool advertise = PatchAdvertise(module);
             const bool validate = PatchValidate(module);
+            const bool ngxGate = PatchNgxMfgGate(module);
 
             {
                 std::lock_guard<std::mutex> lock(g_statusMutex);
                 g_status.KernelsRewritten = kernelsRewritten;
                 g_status.AdvertiseMatched = advertise;
                 g_status.ValidateMatched = validate;
+                g_status.NgxGateMatched = ngxGate;
             }
 
             if (advertise && validate)
-                LOG_INFO("MFG unlock: nvngx_dlssg.dll patched for {} generated frames", kMaxGeneratedFrames);
+                LOG_INFO("MFG unlock: nvngx_dlssg.dll patched for {} generated frames (ngxGate: {})",
+                         kMaxGeneratedFrames, ngxGate);
             else
-                LOG_WARN("MFG unlock: nvngx_dlssg.dll incomplete, advertise {}, validate {}", advertise, validate);
+                LOG_WARN("MFG unlock: nvngx_dlssg.dll incomplete, advertise {}, validate {}, ngxGate {}",
+                         advertise, validate, ngxGate);
         }
     }
 
@@ -551,15 +603,19 @@ unsigned int MfgUnlock::UnlockedMax()
 {
     const auto status = LastStatus();
 
-    return status.AdvertiseMatched && status.ValidateMatched && status.KernelsRewritten > 0
+    return (status.AdvertiseMatched && status.ValidateMatched)
                ? kMaxGeneratedFrames : 0;
 }
 
 bool MfgUnlock::Pending()
 {
-    if (!Config::Instance()->FGDLSSGAdaMfgUnlock.value_or_default() ||
-        Config::Instance()->FGDLSSGAmpereMfgUnlock.value_or_default() ||
+    if (Config::Instance()->FGDLSSGAmpereMfgUnlock.value_or_default() ||
         State::Instance().externalFrameGeneration)
+        return false;
+
+    const bool adaUnlock = Config::Instance()->FGDLSSGAdaMfgUnlock.value_or_default() ||
+                           Config::Instance()->FGDLSSGAdaMfgMultiplier.value_or(0) >= 2;
+    if (!adaUnlock)
         return false;
 
     {

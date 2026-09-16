@@ -45,6 +45,7 @@ struct Status
     bool ModuleFound = false; // nvngx_dlssg.dll was loaded
     bool AdvertiseMatched = false;
     bool ValidateMatched = false;
+    bool NgxGateMatched = false;
     unsigned int KernelsRewritten = 0;
     bool StreamlineFound = false;
     bool StreamlineCeilingPatched = false;
