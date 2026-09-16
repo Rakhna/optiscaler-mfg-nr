@@ -518,7 +518,7 @@ void MfgUnlock::TryApply(HMODULE requestedModule)
                                       gpu.nvidiaArchInfo.architecture_id <= NV_GPU_ARCHITECTURE_AD100;
 
             unsigned int kernelsRewritten = 0;
-            if (Config::Instance()->FGDLSSGAdaBlackwellKernels.value_or(preBlackwell))
+            if (Config::Instance()->FGDLSSGAdaBlackwellKernels.value_or(false))
                 kernelsRewritten = RewriteBlackwellKernels(module);
 
             if (kernelsRewritten == 0)
