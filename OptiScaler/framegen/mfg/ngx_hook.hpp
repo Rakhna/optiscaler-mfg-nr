@@ -19,7 +19,7 @@
 #include <windows.h>
 #include <tlhelp32.h>
 
-#include <detours.h>
+#include <detours/detours.h>
 
 #include <sstream>
 #include <tuple>
