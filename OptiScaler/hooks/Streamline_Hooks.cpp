@@ -14,6 +14,7 @@
 #include <sl1_reflex.h>
 #include <nvapi/fakenvapi.h>
 #include <inputs/FG/DLSSG_Mod.h>
+#include "../framegen/mfg/RenoMfg.h"
 
 sl::RenderAPI StreamlineHooks::renderApi = sl::RenderAPI::eCount;
 std::mutex StreamlineHooks::setConstantsMutex {};
@@ -671,6 +672,17 @@ sl::Result StreamlineHooks::hkslDLSSGSetOptions(const sl::ViewportHandle& viewpo
     sl::DLSSGOptions newOptions = options;
     newOptions.mode = newOptions.mode == sl::DLSSGMode::eOff ? sl::DLSSGMode::eOff : sl::DLSSGMode::eOn;
 
+    // Apply Reno MFG multiplier policy
+    int mfgMult = RenoMfg::GetMultiplier();
+    if (mfgMult > 1)
+    {
+        newOptions.numFramesToGenerate = static_cast<uint32_t>(mfgMult - 1);
+    }
+    else if (options.numFramesToGenerate > 0)
+    {
+        newOptions.numFramesToGenerate = options.numFramesToGenerate;
+    }
+
     if (State::Instance().swapchainApi == API::Vulkan)
     {
         // Only matters for Vulkan, DX doesn't use this delay
@@ -685,7 +697,8 @@ sl::Result StreamlineHooks::hkslDLSSGSetOptions(const sl::ViewportHandle& viewpo
         }
     }
 
-    LOG_TRACE("DLSSG Modified Mode: {}", magic_enum::enum_name(newOptions.mode));
+    LOG_TRACE("DLSSG Modified Mode: {}, numFramesToGenerate: {}", 
+              magic_enum::enum_name(newOptions.mode), newOptions.numFramesToGenerate);
 
     return o_slDLSSGSetOptions(viewport, newOptions);
 }
@@ -714,16 +727,20 @@ sl::Result StreamlineHooks::hkslDLSSGGetState(const sl::ViewportHandle& viewport
             {
                 state.numFramesActuallyPresented = 1;
             }
-        }
-        else
-        {
-            state.numFramesActuallyPresented = 1;
-        }
 
-        state.numFramesToGenerateMax = 1;
+            state.numFramesToGenerateMax = 1;
+        }
 
         LOG_DEBUG("Status: {}, numFramesActuallyPresented: {}", magic_enum::enum_name(state.status),
                   state.numFramesActuallyPresented);
+    }
+
+    // When Reno MFG has patched nvngx_dlssg arch gates for Ada Lovelace, report up to 4x capability
+    if (state.numFramesToGenerateMax < 3)
+    {
+        auto status = RenoMfg::GetStatus();
+        if (status.DlssgPatched)
+            state.numFramesToGenerateMax = 3; // 4x maximum capability
     }
 
     return result;

@@ -39,6 +39,7 @@
 #include <hooks/Crypt32_Hooks.h>
 #include <hooks/Advapi32_Hooks.h>
 #include <hooks/Streamline_Hooks.h>
+#include "framegen/mfg/RenoMfg.h"
 
 #include <nvapi/NvApiHooks.h>
 
@@ -2189,6 +2190,9 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
             State::Instance().upscaleTimes.push_back(0.0f);
         }
 
+        // Initialize native Multi-Frame Generation engine for Ada Lovelace
+        RenoMfg::Initialize();
+
         spdlog::info("");
         spdlog::info("Init done");
         spdlog::info("---------------------------------------------");
@@ -2208,6 +2212,9 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
         // unhookCrypt32();
         // unhookAdvapi32();
         // DetachHooks();
+
+        // Cleanup Reno MFG engine and revert in-memory patches
+        RenoMfg::Shutdown();
 
         if (skModule != nullptr)
             NtdllProxy::FreeLibrary_Ldr(skModule);

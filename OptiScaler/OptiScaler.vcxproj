@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -737,6 +737,52 @@ copy NUL "$(SolutionDir)x64\Release\a\!! EXTRACT ALL FILES TO GAME FOLDER !!" /Y
     <ClCompile Include="version_check.cpp" />
     <ClCompile Include="inputs\XeSS_Debug.cpp" />
     <ClCompile Include="inputs\XeSS_Dx12.cpp" />
+    <ClCompile Include="shaders\dlssnr\DlssNr_Dx12.cpp" />
+    <ClInclude Include="shaders\dlssnr\DlssNr_ActiveColor.h" />
+    <ClInclude Include="shaders\dlssnr\DlssNr_Common.h" />
+    <ClInclude Include="shaders\dlssnr\DlssNr_Dx12.h" />
+    <ClInclude Include="shaders\dlssnr\DlssNr_GpuTime.h" />
+    <ClInclude Include="shaders\dlssnr\DlssNr_Guides.h" />
+    <ClInclude Include="shaders\dlssnr\DlssNr_ResidualPair.h" />
+    <ClInclude Include="shaders\dlssnr\DlssNr_SeamClock.h" />
+    <ClInclude Include="shaders\dlssnr\DlssNr_Vk.h" />
+    <ClCompile Include="shaders\dlssnr\DlssNr_Vk.cpp" />
+    <ClInclude Include="dlssnr\DlssNr.h" />
+    <ClInclude Include="dlssnr\DlssNrFeature_Dx12.h" />
+    <ClInclude Include="dlssnr\DlssNrFeature_Vk.h" />
+    <ClCompile Include="dlssnr\DlssNrFeature_Vk.cpp" />
+    <ClInclude Include="dlssnr\DlssNrHybridAssets.h" />
+    <ClInclude Include="dlssnr\DlssNrHybridBuilder.h" />
+    <ClInclude Include="dlssnr\DlssNrNative.h" />
+    <ClInclude Include="dlssnr\DlssNr_Capture.h" />
+    <ClCompile Include="dlssnr\DlssNr_ExposureScan.cpp" />
+    <ClInclude Include="dlssnr\DlssNr_ExposureScan.h" />
+    <ClCompile Include="dlssnr\DlssNr_Proxy.cpp" />
+    <ClInclude Include="dlssnr\DlssNr_Proxy.h" />
+    <ClCompile Include="dlssnr\DlssNr_Menu.cpp" />
+    <ClCompile Include="dlssnr\DlssNrNative.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='ReleaseDebug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="framegen\mfg\RenoMfg.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='ReleaseDebug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClInclude Include="framegen\mfg\RenoMfg.h" />
+    <ClInclude Include="framegen\mfg\reshade_compat.h" />
+    <ClInclude Include="framegen\mfg\blackwell.hpp" />
+    <ClInclude Include="framegen\mfg\force_policy.hpp" />
+    <ClInclude Include="framegen\mfg\framecount.hpp" />
+    <ClInclude Include="framegen\mfg\hdr_compat.hpp" />
+    <ClInclude Include="framegen\mfg\loadhook.hpp" />
+    <ClInclude Include="framegen\mfg\midpoint.hpp" />
+    <ClInclude Include="framegen\mfg\ngx_hook.hpp" />
+    <ClInclude Include="framegen\mfg\pacing_policy.hpp" />
+    <ClInclude Include="framegen\mfg\quality_guard.hpp" />
+    <ClInclude Include="framegen\mfg\runtime_version.hpp" />
+    <ClInclude Include="framegen\mfg\thin_geometry.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="OptiScaler.rc" />

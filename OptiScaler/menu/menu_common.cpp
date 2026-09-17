@@ -1,4 +1,4 @@
-﻿#include "pch.h"
+#include "pch.h"
 #include "menu_common.h"
 
 #include "font/Hack_Compressed.h"
@@ -13,6 +13,8 @@
 
 #include <nvapi/fakenvapi.h>
 #include <hooks/Reflex_Hooks.h>
+#include "../framegen/mfg/RenoMfg.h"
+#include "../dlssnr/DlssNr.h"
 
 #include <version_check.h>
 
@@ -4993,6 +4995,9 @@ bool MenuCommon::RenderMenu()
                     }
                 }
 
+                // DLSS Multi-Frame Generation for Ada Lovelace (RTX 40)
+                RenoMfg::RenderMenu();
+
                 if (currentFeature != nullptr && !currentFeature->IsFrozen())
                 {
                     // FSR Common -----------------
@@ -5241,6 +5246,9 @@ bool MenuCommon::RenderMenu()
 
                 // NEXT COLUMN -----------------
                 ImGui::TableNextColumn();
+
+                // DLSS Neural Rendering (DLSS-NR)
+                DlssNr::RenderMenu(config, 1.0f);
 
                 if (currentFeature != nullptr && !currentFeature->IsFrozen())
                 {

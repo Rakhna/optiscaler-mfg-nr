@@ -10,10 +10,8 @@ on:
 #    - cron: '0 4 * * *' 
 
   workflow_dispatch:
-#  push:
-#    branches: [ "master" ]
-#  pull_request:
-#    branches: [ "master" ]
+  push:
+    branches: [ "v0.9.4-mfg-nr", "master" ]
     
 env:
   # Path to the solution file relative to the root of the project.
