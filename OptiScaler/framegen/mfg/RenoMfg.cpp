@@ -191,15 +191,16 @@ namespace RenoMfg {
     Status GetStatus() {
         Status s;
         s.Initialized = g_initialized.load(std::memory_order_relaxed);
-        s.InterposerHooked = mfgunlock::framecount::IsInstalled();
+        s.InterposerHooked = mfgunlock::framecount::g_hooked.load(std::memory_order_relaxed);
         s.DlssgPatched = g_dlssg_patched.load(std::memory_order_relaxed);
         s.TemporalPatched = g_midpoint_patched.load(std::memory_order_relaxed) || g_blackwell_patched.load(std::memory_order_relaxed);
         s.BlackwellPatched = g_blackwell_patched.load(std::memory_order_relaxed);
         s.ThinGeometryPatched = g_thin_geometry_patched.load(std::memory_order_relaxed);
         s.CeilingPatched = g_ceiling_patched.load(std::memory_order_relaxed);
         s.CurrentMultiplier = GetMultiplier();
-        s.EffectiveMultiplier = static_cast<int>(mfgunlock::framecount::g_effective_multiplier.load(std::memory_order_relaxed));
-        s.PresentedFrames = mfgunlock::framecount::g_presented_frames.load(std::memory_order_relaxed);
+        unsigned int eff = mfgunlock::framecount::g_last_effective_generated.load(std::memory_order_relaxed);
+        s.EffectiveMultiplier = eff > 0 ? static_cast<int>(eff + 1) : (s.CurrentMultiplier > 0 ? s.CurrentMultiplier : 1);
+        s.PresentedFrames = mfgunlock::framecount::g_actual_frames_presented.load(std::memory_order_relaxed);
         s.Detail = g_blackwell_patched.load(std::memory_order_relaxed) ? g_blackwell_detail : g_midpoint_detail;
         return s;
     }
