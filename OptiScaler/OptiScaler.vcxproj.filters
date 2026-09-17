@@ -1229,6 +1229,12 @@
     <ClCompile Include="framegen\mfg\RenoMfg.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="gpu_time\GpuTime_Dx11.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="gpu_time\GpuTime_Dx12.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClInclude Include="shaders\dlssnr\DlssNr_ActiveColor.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -1278,6 +1284,21 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="dlssnr\DlssNr_Proxy.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="dlssnr\PassProfiles.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="dlssnr\ResidualFg.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="shaders\dlssnr\DlssNr_DeferredSr.inl">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="gpu_time\GpuTime_Dx11.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="gpu_time\GpuTime_Dx12.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="framegen\mfg\RenoMfg.h">
