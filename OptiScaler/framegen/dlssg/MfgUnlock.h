@@ -46,6 +46,7 @@ struct Status
     bool AdvertiseMatched = false;
     bool ValidateMatched = false;
     bool NgxGateMatched = false;
+    bool EvaluateClampMatched = false;
     unsigned int KernelsRewritten = 0;
     bool StreamlineFound = false;
     bool StreamlineCeilingPatched = false;

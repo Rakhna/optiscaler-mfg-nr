@@ -49,6 +49,21 @@ constexpr std::string_view kValidatePattern309 = "3D B0 01 00 00 0F 93 C0";
 constexpr std::string_view kNgxMfgGatePattern = "84 D2 0F 84 ? ? ? ? BE 05 00 00 00";
 constexpr std::string_view kNgxMfgGatePatchedPattern = "84 D2 EB 04 ? ? ? ? BE 05 00 00 00";
 
+// 310.9 evaluate feature secondary clamp:
+// In EvaluateFeature, after passing the first gate (which sets esi = 5), the code attempts to
+// clamp esi to edi (which holds 1 on Ada):
+//     mov esi, edi          ; 8B F7
+//     mov r8d, [rbx+0x4F8]  ; 44 8B 83 F8 04 00 00 ; requested frame count
+//     cmp r8d, esi          ; 44 3B C6
+//     jbe +0x7C             ; 76 7C                ; jumps to valid multi-frame pipeline setup
+//
+// If r8d > esi, it falls through to error and returns 0xBAD00005.
+// Patched:
+// 1) 8B F7 -> 90 90 (nop nop), so esi remains 5.
+// 2) 76 7C -> EB 7C (jmp +0x7c), so it unconditionally jumps to the valid pipeline.
+constexpr std::string_view kEvaluateClampPattern = "8B F7 44 8B 83 F8 04 00 00 44 3B C6 76 7C";
+constexpr std::string_view kEvaluateClampPatchedPattern = "90 90 44 8B 83 F8 04 00 00 44 3B C6 EB 7C";
+
 std::mutex g_statusMutex;
 MfgUnlock::Status g_status {};
 
@@ -217,6 +232,30 @@ bool PatchNgxMfgGate(HMODULE module)
              Hex((const uint8_t*) branchAt, sizeof(jmpOver)), Hex(jmpOver, sizeof(jmpOver)));
 
     return WriteBytes(branchAt, jmpOver, sizeof(jmpOver));
+}
+
+// Eliminates the secondary frame clamp inside EvaluateFeature so requests with numFramesToGenerate > 1
+// always branch to the valid multi-frame pipeline without returning 0xBAD00005.
+bool PatchEvaluateClamp(HMODULE module)
+{
+    const auto address = UniqueAddress(module, kEvaluateClampPattern);
+    if (address == 0)
+    {
+        if (UniqueAddress(module, kEvaluateClampPatchedPattern) != 0)
+        {
+            LOG_INFO("MFG unlock: evaluate_clamp already patched");
+            return true;
+        }
+
+        LOG_WARN("MFG unlock: evaluate_clamp pattern not found");
+        return false;
+    }
+
+    const uint8_t nops[] = { 0x90, 0x90 };
+    const uint8_t jmpValid[] = { 0xEB, 0x7C };
+
+    LOG_INFO("MFG unlock: evaluate_clamp at {:X}, nop mov esi, edi and force jmp +0x7C to valid path", address);
+    return WriteBytes(address, nops, sizeof(nops)) && WriteBytes(address + 12, jmpValid, sizeof(jmpValid));
 }
 
 
@@ -577,6 +616,7 @@ void MfgUnlock::TryApply(HMODULE requestedModule)
             const bool advertise = PatchAdvertise(module);
             const bool validate = PatchValidate(module);
             const bool ngxGate = PatchNgxMfgGate(module);
+            const bool evalClamp = PatchEvaluateClamp(module);
 
             {
                 std::lock_guard<std::mutex> lock(g_statusMutex);
@@ -584,14 +624,15 @@ void MfgUnlock::TryApply(HMODULE requestedModule)
                 g_status.AdvertiseMatched = advertise;
                 g_status.ValidateMatched = validate;
                 g_status.NgxGateMatched = ngxGate;
+                g_status.EvaluateClampMatched = evalClamp;
             }
 
             if (advertise && validate)
-                LOG_INFO("MFG unlock: nvngx_dlssg.dll patched for {} generated frames (ngxGate: {})",
-                         kMaxGeneratedFrames, ngxGate);
+                LOG_INFO("MFG unlock: nvngx_dlssg.dll patched for {} generated frames (ngxGate: {}, evalClamp: {})",
+                         kMaxGeneratedFrames, ngxGate, evalClamp);
             else
-                LOG_WARN("MFG unlock: nvngx_dlssg.dll incomplete, advertise {}, validate {}, ngxGate {}",
-                         advertise, validate, ngxGate);
+                LOG_WARN("MFG unlock: nvngx_dlssg.dll incomplete, advertise {}, validate {}, ngxGate {}, evalClamp {}",
+                         advertise, validate, ngxGate, evalClamp);
         }
     }
 

@@ -3114,11 +3114,12 @@ void MenuCommon::RenderFrameGenerationSelection(RenderMenuContext& ctx)
     if (adaUnlock && !disableAda)
     {
         const auto& status = MfgUnlock::LastStatus();
-        ImGui::TextWrapped("DLSSG %s: capability %s, validation %s, gate %s, retargeted kernel groups %u",
+        ImGui::TextWrapped("DLSSG %s: capability %s, validation %s, gate %s, eval-clamp %s, retargeted kernel groups %u",
                            status.SnippetVersion.empty() ? "not patched" : status.SnippetVersion.c_str(),
                            status.AdvertiseMatched ? "matched" : "not matched",
                            status.ValidateMatched ? "matched" : "not matched",
                            status.NgxGateMatched ? "matched" : "not matched",
+                           status.EvaluateClampMatched ? "matched" : "not matched",
                            status.KernelsRewritten);
 
         ImGui::TextColored(status.StreamlineCeilingPatched ? ImVec4(0.2f, 1.0f, 0.2f, 1.0f) : ImVec4(1.0f, 0.8f, 0.2f, 1.0f),
