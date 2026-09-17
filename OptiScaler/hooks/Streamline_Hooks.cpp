@@ -11,6 +11,7 @@
 #include <menu/menu_overlay_base.h>
 #include <framegen/nvngx/Nvngx_FG.h>
 #include <framegen/dlssg/MfgUnlock.h>
+#include <framegen/mfg/RenoMfg.h>
 #include <proxies/KernelBase_Proxy.h>
 #include <imgui/ImGuiNotify.hpp>
 
@@ -1187,8 +1188,8 @@ sl::Result StreamlineHooks::hkslDLSSGSetOptions(const sl::ViewportHandle& viewpo
             }
         }
 
-        // Check if Ada MFG Multiplier is forced (e.g. 2x, 3x, 4x, 5x, 6x)
-        const unsigned int forcedMultiplier = Config::Instance()->FGDLSSGAdaMfgMultiplier.value_or(0);
+        const unsigned int renoMult = static_cast<unsigned int>(RenoMfg::GetMultiplier());
+        const unsigned int forcedMultiplier = renoMult >= 2 ? renoMult : Config::Instance()->FGDLSSGAdaMfgMultiplier.value_or(0);
         if (forcedMultiplier >= 2 && !State::Instance().externalFrameGeneration)
         {
             const uint32_t desiredGenerated = forcedMultiplier - 1;

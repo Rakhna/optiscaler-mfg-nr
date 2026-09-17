@@ -49,6 +49,7 @@
 #include <version_check.h>
 #include <misc/IdentifyGpu.h>
 #include <sha1/sha1.hpp>
+#include "framegen/mfg/RenoMfg.h"
 
 static std::vector<HMODULE> _asiHandles;
 static std::vector<std::filesystem::directory_entry> _lateLoadingEntries;
@@ -2186,11 +2187,13 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
         }
 #endif
 
+        RenoMfg::Initialize();
         break;
     }
 
     case DLL_PROCESS_DETACH:
         State::Instance().isShuttingDown = true;
+        RenoMfg::Shutdown();
 
         // Unhooking and cleaning stuff causing issues during shutdown.
         // Disabled for now to check if it cause any issues

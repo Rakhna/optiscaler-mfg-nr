@@ -323,6 +323,19 @@ copy NUL "$(SolutionDir)x64\Release\a\!! EXTRACT ALL FILES TO GAME FOLDER !!" /Y
     <ClInclude Include="framegen\dlssg\DLSSG_Dx12.h" />
     <ClInclude Include="framegen\dlssg\MfgUnlock.h" />
     <ClInclude Include="framegen\dlssg\AmpereMfgLoader.h" />
+    <ClInclude Include="framegen\mfg\RenoMfg.h" />
+    <ClInclude Include="framegen\mfg\blackwell.hpp" />
+    <ClInclude Include="framegen\mfg\force_policy.hpp" />
+    <ClInclude Include="framegen\mfg\framecount.hpp" />
+    <ClInclude Include="framegen\mfg\hdr_compat.hpp" />
+    <ClInclude Include="framegen\mfg\loadhook.hpp" />
+    <ClInclude Include="framegen\mfg\midpoint.hpp" />
+    <ClInclude Include="framegen\mfg\ngx_hook.hpp" />
+    <ClInclude Include="framegen\mfg\pacing_policy.hpp" />
+    <ClInclude Include="framegen\mfg\quality_guard.hpp" />
+    <ClInclude Include="framegen\mfg\reshade_compat.h" />
+    <ClInclude Include="framegen\mfg\runtime_version.hpp" />
+    <ClInclude Include="framegen\mfg\thin_geometry.hpp" />
     <ClInclude Include="dlssnr\PassProfiles.h" />
     <ClInclude Include="framegen\ffx\FSRFG_Dx12.h" />
     <ClInclude Include="framegen\IFGFeature.h" />
@@ -619,6 +632,11 @@ copy NUL "$(SolutionDir)x64\Release\a\!! EXTRACT ALL FILES TO GAME FOLDER !!" /Y
     <ClCompile Include="framegen\dlssg\DLSSG_Dx12.cpp" />
     <ClCompile Include="framegen\dlssg\MfgUnlock.cpp" />
     <ClCompile Include="framegen\dlssg\AmpereMfgLoader.cpp" />
+    <ClCompile Include="framegen\mfg\RenoMfg.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='ReleaseDebug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="framegen\ffx\FSRFG_Dx12.cpp" />
     <ClCompile Include="framegen\IFGFeature.cpp" />
     <ClCompile Include="framegen\IFGFeature_Dx12.cpp" />

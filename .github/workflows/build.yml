@@ -11,7 +11,7 @@ on:
 
   workflow_dispatch:
   push:
-    branches: [ "master", "main" ]
+    branches: [ "master", "main", "feat/reno-mfg-integration" ]
     
 env:
   # Path to the solution file relative to the root of the project.
