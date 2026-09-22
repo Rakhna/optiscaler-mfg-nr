@@ -687,7 +687,7 @@ sl::Result StreamlineHooks::hkslDLSSGSetOptions(const sl::ViewportHandle& viewpo
     }
 
     const unsigned int renoMult = static_cast<unsigned int>(RenoMfg::GetMultiplier());
-    if (renoMult >= 2 && !State::Instance().externalFrameGeneration)
+    if (renoMult >= 2)
     {
         newOptions.numFramesToGenerate = renoMult - 1;
     }
