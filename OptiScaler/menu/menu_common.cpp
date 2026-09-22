@@ -1,4 +1,4 @@
-﻿#include "pch.h"
+#include "pch.h"
 #include "menu_common.h"
 
 #include "font/Hack_Compressed.h"
@@ -13,6 +13,7 @@
 
 #include <nvapi/fakenvapi.h>
 #include <hooks/Reflex_Hooks.h>
+#include <framegen/mfg/RenoMfg.h>
 
 #include <version_check.h>
 
@@ -3859,6 +3860,7 @@ bool MenuCommon::RenderMenu()
 
                 {
                     ImGui::SeparatorText("Frame Generation");
+                    RenoMfg::RenderMenu();
 
                     if (ImGui::BeginTable("fgSelection", 2, ImGuiTableFlags_SizingStretchSame))
                     {

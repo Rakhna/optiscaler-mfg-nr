@@ -14,6 +14,7 @@
 #include <sl1_reflex.h>
 #include <nvapi/fakenvapi.h>
 #include <inputs/FG/DLSSG_Mod.h>
+#include <framegen/mfg/RenoMfg.h>
 
 sl::RenderAPI StreamlineHooks::renderApi = sl::RenderAPI::eCount;
 std::mutex StreamlineHooks::setConstantsMutex {};
@@ -683,6 +684,12 @@ sl::Result StreamlineHooks::hkslDLSSGSetOptions(const sl::ViewportHandle& viewpo
             newOptions.flags |= sl::DLSSGFlags::eRetainResourcesWhenOff;
             ReflexHooks::setDlssgDetectedState(false);
         }
+    }
+
+    const unsigned int renoMult = static_cast<unsigned int>(RenoMfg::GetMultiplier());
+    if (renoMult >= 2 && !State::Instance().externalFrameGeneration)
+    {
+        newOptions.numFramesToGenerate = renoMult - 1;
     }
 
     LOG_TRACE("DLSSG Modified Mode: {}", magic_enum::enum_name(newOptions.mode));

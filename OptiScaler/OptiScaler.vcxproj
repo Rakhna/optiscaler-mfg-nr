@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -314,6 +314,19 @@ copy NUL "$(SolutionDir)x64\Release\a\!! EXTRACT ALL FILES TO GAME FOLDER !!" /Y
     <ClInclude Include="framegen\ffx\FSRFG_Dx12.h" />
     <ClInclude Include="framegen\IFGFeature.h" />
     <ClInclude Include="framegen\IFGFeature_Dx12.h" />
+    <ClInclude Include="framegen\mfg\RenoMfg.h" />
+    <ClInclude Include="framegen\mfg\blackwell.hpp" />
+    <ClInclude Include="framegen\mfg\force_policy.hpp" />
+    <ClInclude Include="framegen\mfg\framecount.hpp" />
+    <ClInclude Include="framegen\mfg\hdr_compat.hpp" />
+    <ClInclude Include="framegen\mfg\loadhook.hpp" />
+    <ClInclude Include="framegen\mfg\midpoint.hpp" />
+    <ClInclude Include="framegen\mfg\ngx_hook.hpp" />
+    <ClInclude Include="framegen\mfg\pacing_policy.hpp" />
+    <ClInclude Include="framegen\mfg\quality_guard.hpp" />
+    <ClInclude Include="framegen\mfg\reshade_compat.h" />
+    <ClInclude Include="framegen\mfg\runtime_version.hpp" />
+    <ClInclude Include="framegen\mfg\thin_geometry.hpp" />
     <ClInclude Include="fsr4\FSR4ModelSelection.h" />
     <ClInclude Include="hooks\D3D12_Hooks.h" />
     <ClInclude Include="hooks\DxgiFactory_Hooks.h" />
@@ -553,6 +566,11 @@ copy NUL "$(SolutionDir)x64\Release\a\!! EXTRACT ALL FILES TO GAME FOLDER !!" /Y
     <ClCompile Include="framegen\ffx\FSRFG_Dx12.cpp" />
     <ClCompile Include="framegen\IFGFeature.cpp" />
     <ClCompile Include="framegen\IFGFeature_Dx12.cpp" />
+    <ClCompile Include="framegen\mfg\RenoMfg.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='ReleaseDebug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="fsr4\FSR4ModelSelection.cpp" />
     <ClCompile Include="fsr4\FSR4Upgrade.cpp" />
     <ClCompile Include="hooks\D3D12_Hooks.cpp" />
