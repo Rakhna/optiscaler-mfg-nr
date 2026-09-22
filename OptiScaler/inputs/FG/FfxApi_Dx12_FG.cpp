@@ -11,6 +11,7 @@
 #include "dx12/ffx_api_dx12.h"
 #include <dx12/ffx_api_framegeneration_dx12.h>
 
+#ifndef FFX_API_QUERY_DESC_TYPE_FRAMEGENERATIONSWAPCHAIN_GPU_MEMORY_USAGE_DX12_V2
 #define FFX_API_QUERY_DESC_TYPE_FRAMEGENERATIONSWAPCHAIN_GPU_MEMORY_USAGE_DX12_V2 0x3000A
 struct ffxQueryFrameGenerationSwapChainGetGPUMemoryUsageDX12V2
 {
@@ -33,7 +34,9 @@ struct ffxQueryFrameGenerationSwapChainGetGPUMemoryUsageDX12V2
                     ///< Query() call.
     struct FfxApiEffectMemoryUsage* gpuMemoryUsageFrameGenerationSwapchain;
 };
+#endif
 
+#ifndef FFX_API_DISPATCH_DESC_TYPE_FRAMEGENERATION_PREPARE_V2
 #define FFX_API_DISPATCH_DESC_TYPE_FRAMEGENERATION_PREPARE_V2 0x2000C
 struct ffxDispatchDescFrameGenerationPrepareV2
 {
@@ -63,6 +66,7 @@ struct ffxDispatchDescFrameGenerationPrepareV2
     float cameraRight[3];    ///< The camera right normalized vector in world space
     float cameraForward[3];  ///< The camera forward normalized vector in world space
 };
+#endif
 
 static ID3D12Device* _device = nullptr;
 static FG_Constants _fgConst {};
