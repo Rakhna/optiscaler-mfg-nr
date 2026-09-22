@@ -2507,12 +2507,12 @@ void DlssNr_Dx12::Dispatch(ID3D12GraphicsCommandList* cmdList, ID3D12Resource* c
                 g_nr.nrScaler = nrScaler;
             }
             if (g_nr.superUp == nullptr)
-                g_nr.superUp = new OS_Dx12("DLSS-NR supersample up", device, true, nrScaler);
+                g_nr.superUp = new OS_Dx12("DLSS-NR supersample up", device, true);
             if (g_nr.superDown == nullptr)
-                g_nr.superDown = new OS_Dx12("DLSS-NR supersample down", device, false, nrScaler);
+                g_nr.superDown = new OS_Dx12("DLSS-NR supersample down", device, false);
 
             if (g_nr.superUp != nullptr &&
-                g_nr.superUp->Dispatch(cmdList, g_nr.colorCopy, g_nr.colorSmall))
+                g_nr.superUp->Dispatch(device, cmdList, g_nr.colorCopy, g_nr.colorSmall))
             {
                 Barrier(cmdList, g_nr.colorSmall, D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
                         D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
@@ -2863,7 +2863,7 @@ void DlssNr_Dx12::Dispatch(ID3D12GraphicsCommandList* cmdList, ID3D12Resource* c
         // falls back to the Nx pair. finalAnswer is NPSR here; outputNative is UAV from last frame.
         bool superDownOk = false;
         if (workScale > 1.0f && g_nr.superDown != nullptr && g_nr.outputNative != nullptr &&
-            g_nr.superDown->Dispatch(cmdList, finalAnswer, g_nr.outputNative))
+            g_nr.superDown->Dispatch(device, cmdList, finalAnswer, g_nr.outputNative))
         {
             Barrier(cmdList, g_nr.outputNative, D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
                     D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);

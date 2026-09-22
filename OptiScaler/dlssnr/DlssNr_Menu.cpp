@@ -257,7 +257,7 @@ void RenderMenu(Config* config, float menuResScale)
         else if (!DlssNr::IsRunning() && !vulkan)
         {
             const auto feature = State::Instance().currentFeature;
-            const bool nativeVk = feature && feature->Api() == API::Vulkan && !feature->IsWithDx12();
+            const bool nativeVk = feature && State::Instance().api == API::Vulkan && !feature->IsWithDx12();
             const char* reason = nativeVk ? DlssNr::FailureReasonVk() : DlssNr::FailureReason();
 
             if (reason[0] != 0)
@@ -270,7 +270,7 @@ void RenderMenu(Config* config, float menuResScale)
                 else if (ImGui::SmallButton("Retry"))
                     DlssNr::RetryAfterFailure();
             }
-            else if (feature && feature->Api() == API::DX11 && !feature->IsWithDx12())
+            else if (feature && State::Instance().api == API::DX11 && !feature->IsWithDx12())
             {
                 ImGui::TextWrapped("NR needs the D3D12 bridge on D3D11. Choose an upscaler marked w/Dx12 and restart.");
             }
