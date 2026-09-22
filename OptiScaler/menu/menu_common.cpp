@@ -14,6 +14,7 @@
 #include <nvapi/fakenvapi.h>
 #include <hooks/Reflex_Hooks.h>
 #include <framegen/mfg/RenoMfg.h>
+#include "../dlssnr/DlssNr.h"
 
 #include <version_check.h>
 
@@ -5243,6 +5244,9 @@ bool MenuCommon::RenderMenu()
 
                 // NEXT COLUMN -----------------
                 ImGui::TableNextColumn();
+
+                // DLSS Neural Rendering (DLSS-NR)
+                DlssNr::RenderMenu(config, 1.0f);
 
                 if (currentFeature != nullptr && !currentFeature->IsFrozen())
                 {
