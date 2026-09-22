@@ -9,6 +9,7 @@
 
 #include "ffx_framegeneration.h"
 #include "dx12/ffx_api_dx12.h"
+#include <dx12/ffx_api_framegeneration_dx12.h>
 
 #define FFX_API_QUERY_DESC_TYPE_FRAMEGENERATIONSWAPCHAIN_GPU_MEMORY_USAGE_DX12_V2 0x3000A
 struct ffxQueryFrameGenerationSwapChainGetGPUMemoryUsageDX12V2

@@ -9,6 +9,7 @@
 #ifdef VK_USE_PLATFORM_WIN32_KHR
 #include <vulkan/vulkan_win32.h>
 #endif
+#include <vulkan/vulkan_beta.h>
 
 #include "Hook_Utils.h"
 

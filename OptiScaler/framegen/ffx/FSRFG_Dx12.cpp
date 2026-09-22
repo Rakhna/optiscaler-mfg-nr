@@ -20,6 +20,7 @@
                                                     FFX_FRAMEGENERATION_SWAPCHAIN_DX12_VERSION_MINOR,                  \
                                                     FFX_FRAMEGENERATION_SWAPCHAIN_DX12_VERSION_PATCH)
 
+#ifndef FFX_API_CREATE_CONTEXT_DESC_TYPE_FRAMEGENERATIONSWAPCHAIN_VERSION_DX12
 #define FFX_API_CREATE_CONTEXT_DESC_TYPE_FRAMEGENERATIONSWAPCHAIN_VERSION_DX12 0x3000bu
 struct ffxCreateContextDescFrameGenerationSwapChainVersionDX12
 {
@@ -27,6 +28,7 @@ struct ffxCreateContextDescFrameGenerationSwapChainVersionDX12
     uint32_t version;                  ///< The API version the application was built against. This must be set to
                                        ///< FFX_FRAMEGENERATION_SWAPCHAIN_DX12_VERSION.
 };
+#endif
 
 static D3D12_RESOURCE_STATES GetD3D12State(FfxApiResourceState state)
 {

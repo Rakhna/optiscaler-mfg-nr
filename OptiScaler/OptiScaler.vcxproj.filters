@@ -518,6 +518,9 @@
     <ClInclude Include="hooks\Streamline_Hooks.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="include\vk\ffx_api_vk.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="proxies\IGDExt_Proxy.h">
       <Filter>Header Files</Filter>
     </ClInclude>
